@@ -118,7 +118,7 @@ function adapters.roster:get(username)
 
     -- XXX this kind of relies on the way we do groups at INOC
     for _, attrs in ld:search { base = params.groups.basedn, scope = scope, filter = filter } do
-        if groups[ attrs[namefield] ] or params.groups.populate then
+        if groups_in_config[ attrs[namefield] ] or params.groups.populate then
             local members = attrs[memberfield];
 
             for _, user in ipairs(members) do
