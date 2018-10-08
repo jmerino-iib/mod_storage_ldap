@@ -51,7 +51,7 @@ do
 
       user_cache = {};
 
-      for _, attrs in ld:search { base = params.user.basedn, scope = 'onelevel', filter = params.user.filter } do
+      for _, attrs in ld:search { base = params.user.basedn, scope = params.user.scope or 'subtree', filter = params.user.filter } do
           user_cache[attrs[usernamefield]] = attrs[namefield];
       end
       last_fetch_time = gettime();
@@ -104,16 +104,21 @@ function adapters.roster:get(username)
 
     local memberfield = params.groups.memberfield;
     local namefield   = params.groups.namefield;
-    local filter      = memberfield .. '=' .. tostring(username);
+    local def_filter  = memberfield .. '=' .. tostring(username);
+    local filter      = params.groups.filter and
+                          '(&' .. params.groups.filter .. '(' .. def_filter .. '))' or
+                        def_filter;
+    local scope       = params.groups.scope  or 'onelevel';
+    local prefix      = params.groups.prefix or '';
 
-    local groups = {};
+    local groups_in_config = {};
     for _, config in ipairs(params.groups) do
-        groups[ config[namefield] ] = config.name;
+        groups_in_config[ config[namefield] ] = config.name;
     end
 
     -- XXX this kind of relies on the way we do groups at INOC
-    for _, attrs in ld:search { base = params.groups.basedn, scope = 'onelevel', filter = filter } do
-        if groups[ attrs[namefield] ] then
+    for _, attrs in ld:search { base = params.groups.basedn, scope = scope, filter = filter } do
+        if groups[ attrs[namefield] ] or params.groups.populate then
             local members = attrs[memberfield];
 
             for _, user in ipairs(members) do
@@ -130,7 +135,7 @@ function adapters.roster:get(username)
                         contacts[jid] = record;
                     end
 
-                    record.groups[ groups[ attrs[namefield] ] ] = true;
+                    record.groups[ groups_in_config[ attrs[namefield] ] or prefix .. attrs[namefield] ] = true;
                 end
             end
         end
